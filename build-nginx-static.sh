@@ -55,7 +55,7 @@ cd ..
 echo "\n\n\nBuilding OpenSSL..."
 cd openssl-${OPENSSL_VERSION}
 ./Configure no-shared no-async linux-x86_64 --prefix=/build/openssl-build --openssldir=/build/openssl-build
-./configdata.pm --help 
+./configdata.pm --help
 make -j$(nproc)
 # make test
 cd ..
@@ -67,11 +67,13 @@ cd nginx-${NGINX_VERSION}
 ./configure \
     --prefix=/nginx \
     --sbin-path=/nginx/sbin/nginx \
-    --conf-path=/nginx/conf.d/nginx.conf \
+    --conf-path=/nginx/nginx.conf \
     --error-log-path=/dev/stderr \
     --http-log-path=/dev/stdout \
     --pid-path=/nginx/nginx.pid \
     --lock-path=/nginx/nginx.lock \
+    --with-threads \
+    --with-file-aio \
     --with-http_ssl_module \
     --with-http_v2_module \
     --with-http_realip_module \
@@ -92,7 +94,7 @@ echo "Checking if binary is static..."
 ldd /nginx/sbin/nginx || echo "Great! No shared library dependencies."
 
 # Create desired directory structure for copying into scratch
-mkdir -p /nginx/logs /nginx/conf.d /nginx/certs /var/www
+mkdir -p /nginx/conf.d /nginx/stream.d/ /nginx/certs /var/www /var/log/nginx
 
 # Shrink size as much as possible
 ORIG_SIZE=$(wc -c < /nginx/sbin/nginx)
@@ -108,37 +110,6 @@ echo "Size reduction from stripping: $(($ORIG_SIZE - $STRIPPED_SIZE)) bytes ($(n
 echo "Size reduction from stripped->UPX: $(($STRIPPED_SIZE - $UPX_SIZE)) bytes ($(numfmt --to=iec-i --suffix=B $(($STRIPPED_SIZE - $UPX_SIZE))))"
 echo "Final nginx binary size: $UPX_SIZE bytes ($(numfmt --to=iec-i --suffix=B $UPX_SIZE))"
 echo "Total size reduction: $(($ORIG_SIZE - $UPX_SIZE)) bytes ($(numfmt --to=iec-i --suffix=B $(($ORIG_SIZE - $UPX_SIZE))))"
-
-# Create minimal nginx.conf
-cat > /nginx/conf.d/nginx.conf << 'EOF'
-worker_processes auto;
-events {
-    worker_connections 1024;
-}
-http {
-    include       mime.types;
-    default_type  application/octet-stream;
-    sendfile      on;
-    keepalive_timeout 65;
-
-    # Include all configuration files
-    include /nginx/conf.d/*.conf;
-
-    server {
-        listen 80;
-        listen 443 ssl;
-        server_name _;
-
-        ssl_certificate     /nginx/certs/server.crt;
-        ssl_certificate_key /nginx/certs/server.key;
-
-        location / {
-            root   /var/www;
-            index  index.html;
-        }
-    }
-}
-EOF
 
 # Create a minimal HTML file
 echo "<html><body><h1>micro-nginx</h1></body></html>" > /var/www/index.html

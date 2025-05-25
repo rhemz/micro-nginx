@@ -4,17 +4,25 @@
 
 # stop colima running normally
 echo "stopping colima"
-colima stop
+colima stop default
+colima stop rosetta
 
-# start colima with rosetta 2 integration
+# ensure all are stopped
+if o=$(colima ls | awk 'NR > 1 && $2 != "Stopped" { print "Error: Profile \047" $1 "\047 is not stopped (Status: " $2 ")."; found=1 } END { exit found }'); then
+  :
+else
+  echo "$o" >&2 && exit 1
+fi
+
+
+# start colima with rosetta profile
 echo "starting colima with rosetta emulation"
-colima start --vz-rosetta --cpu 8
+colima start rosetta
 
 echo "building nginx"
-BUILDKIT_STEP_LOG_MAX_SIZE=0 docker buildx build --platform linux/amd64 --progress plain .
-
-# stop colima running in rosetta 2 mode and restart in default arm64 mode
-echo "stopping colima with rosetta emulation"
-colima stop
-echo "starting colima normally"
-colima start
+docker buildx build \
+  -t micro-nginx-local \
+  --builder rosetta-nginx-builder \
+  --platform linux/amd64 \
+  --progress plain \
+  --load .
