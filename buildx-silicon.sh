@@ -21,7 +21,7 @@ colima start rosetta
 
 echo "building nginx"
 docker buildx build \
-  -t micro-nginx-local \
+  -t rhemz/micro-nginx:latest \
   --builder rosetta-nginx-builder \
   --platform linux/amd64 \
   --progress plain \

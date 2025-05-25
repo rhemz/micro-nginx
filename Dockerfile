@@ -7,6 +7,10 @@ RUN apk add --no-cache bash build-base cmake coreutils linux-headers perl tree u
 COPY build-nginx-static.sh /
 RUN /build-nginx-static.sh
 
+RUN mkdir -p /tmp/rootfs/dev && \
+    ln -sf /proc/self/fd/1 /tmp/rootfs/dev/stdout && \
+    ln -sf /proc/self/fd/2 /tmp/rootfs/dev/stderr
+
 # Create the final scratch image
 FROM scratch
 
@@ -16,6 +20,7 @@ COPY nginx.conf /nginx/
 COPY --from=builder /etc/passwd /etc/group /etc/
 COPY --from=builder /var/www /var/www
 COPY --from=builder /var/log /var/log
+COPY --from=builder /tmp/rootfs/dev /dev
 
 # Expose ports
 EXPOSE 80 443
